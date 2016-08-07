@@ -17,6 +17,9 @@ class GenericForeignKey(GFK):
     For more info take a look at
     django.contrib.contenttypes.fields.GenericForeignKey.
 
+    Inspired by:
+    https://github.com/django/django/blob/stable/1.10.x/django/contrib/contenttypes/fields.py#L21  # noqa
+
     :param autosave_related: Should be related objects saved when this relation
     is set.
     :param type: Boolean
