@@ -4,7 +4,7 @@ Django - **E**nhanced **G**eneric **F**oreign **K**ey
 Homepage
 --------
 Visit the home of `Django-egfk` on the web:
-[github.com/BrnoPCmaniak/django-egfk/settings](https://github.com/BrnoPCmaniak/django-egfk/settings)
+[github.com/BrnoPCmaniak/django-egfk](https://github.com/BrnoPCmaniak/django-egfk)
 
 Documentation
 -------------
