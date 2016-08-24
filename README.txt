@@ -27,7 +27,7 @@ models.py:
 
 
 And now you can do this:
-    >>> from test_g.models import Main, Child
+    >>> from test_egfk.models import Main, Child
     >>> from django.contrib.auth.models import User
     >>> m = Main(text="TEST")
     >>> u = User.objects.get()
