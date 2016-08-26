@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey as GFK
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
 from django.db import models
 from django.core import checks
 
@@ -44,7 +44,7 @@ class GenericForeignKey(GFK):
 
     def _check_object_id_field(self):
         try:
-            get_field(self.model, self.fk_field)
+            get_field(self.model, self.fk_field, ignore_GFK=True)
         except FieldDoesNotExist:
             return [
                 checks.Error(
@@ -63,7 +63,7 @@ class GenericForeignKey(GFK):
         valid content_type field (is a ForeignKey to ContentType).
         """
         try:
-            field = get_field(self.model, self.ct_field)
+            field = get_field(self.model, self.ct_field, ignore_GFK=True)
         except FieldDoesNotExist:
             return [
                 checks.Error(
@@ -76,7 +76,9 @@ class GenericForeignKey(GFK):
                 )
             ]
         else:
-            if not isinstance(field, models.ForeignKey):
+            if field is None:
+                return []
+            elif not isinstance(field, models.ForeignKey):
                 return [
                     checks.Error(
                         "'%s.%s' is not a ForeignKey." % (
@@ -119,14 +121,13 @@ class GenericForeignKey(GFK):
         fk_dict = defaultdict(set)
         # We need one instance for each group in order to get the right db:
         instance_dict = {}
-        ct_attname = get_field(self.model, self.ct_field).get_attname()
-        if "." in self.ct_field:
-            # attname is usualy another field on related model
-            ct_attname = "%s.%s" % (self.ct_field[:self.ct_field.rfind(".")],
-                                    ct_attname)
         for instance in instances:
             # We avoid looking for values if either ct_id or fkey value is None
-            ct_id = getattrd(instance, ct_attname)
+            ct_model = getattrd_last_but_one(instance, self.ct_field, instance).__class__
+            ct_attname = get_field(ct_model, self.ct_field.split(".")[-1]).get_attname()
+            full_ct_attname = ("%s.%s" % (".".join(self.ct_field.split(".")[:-1]), ct_attname)
+                               if len(self.ct_field.split(".")[:-1]) > 1 else ct_attname)
+            ct_id = getattrd(instance, full_ct_attname)
             if ct_id is not None:
                 fk_val = getattrd(instance, self.fk_field)
                 if fk_val is not None:
@@ -143,7 +144,11 @@ class GenericForeignKey(GFK):
         # the content type, so we use a callable that returns
         # a (fk, class) pair.
         def gfk_key(obj):
-            ct_id = getattrd(obj, ct_attname)
+            ct_model = getattrd_last_but_one(obj, self.ct_field, instance).__class__
+            ct_attname = get_field(ct_model, self.ct_field.split(".")[-1]).get_attname()
+            full_ct_attname = ("%s.%s" % (".".join(self.ct_field.split(".")[:-1]), ct_attname)
+                               if len(self.ct_field.split(".")[:-1]) > 1 else ct_attname)
+            ct_id = getattrd(obj, full_ct_attname)
             if ct_id is None:
                 return None
             else:
@@ -152,11 +157,7 @@ class GenericForeignKey(GFK):
                 return (model._meta.pk.get_prep_value(
                             getattrd(obj, self.fk_field)), model)
 
-        return (ret_val,
-                lambda obj: (obj._get_pk_val(), obj.__class__),
-                gfk_key,
-                True,
-                self.name)
+        return ret_val, lambda obj: (obj._get_pk_val(), obj.__class__), gfk_key, True, self.name
 
     def __get__(self, instance, cls=None):
         if instance is None:
@@ -166,12 +167,11 @@ class GenericForeignKey(GFK):
         # reload the same ContentType over and over (#5570). Instead, get the
         # content type ID here, and later when the actual instance is needed,
         # use ContentType.objects.get_for_id(), which has a global cache.
-        ct_attname = get_field(self.model, self.ct_field).get_attname()
-        if "." in self.ct_field:
-            # attname is usualy another field on related model
-            ct_attname = "%s.%s" % (self.ct_field[:self.ct_field.rfind(".")],
-                                    ct_attname)
-        ct_id = getattrd(instance, ct_attname, None)
+        ct_model = getattrd_last_but_one(instance, self.ct_field, instance).__class__
+        ct_attname = get_field(ct_model, self.ct_field.split(".")[-1]).get_attname()
+        full_ct_attname = ("%s.%s" % (".".join(self.ct_field.split(".")[:-1]), ct_attname)
+                           if len(self.ct_field.split(".")[:-1]) > 1 else ct_attname)
+        ct_id = getattrd(instance, full_ct_attname)
         pk_val = getattrd(instance, self.fk_field)
 
         try:
@@ -180,10 +180,8 @@ class GenericForeignKey(GFK):
             rel_obj = None
         else:
             if rel_obj and (
-                    ct_id != (self.get_content_type(
-                        obj=rel_obj, using=instance._state.db)).id or
-                    rel_obj._meta.pk.to_python(pk_val) != (
-                        rel_obj._get_pk_val())):
+                    ct_id != self.get_content_type(obj=rel_obj, using=instance._state.db).id or
+                    rel_obj._meta.pk.to_python(pk_val) != rel_obj._get_pk_val()):
                 rel_obj = None
 
         if rel_obj is not None:
@@ -212,3 +210,8 @@ class GenericForeignKey(GFK):
         if "." in self.fk_field and self.autosave_related:
             getattrd_last_but_one(instance, self.fk_field).save()
         setattrd(instance, self.cache_attr, value)
+
+    def get_related_model(self, instance):
+        ct_attname = get_field(self.model, self.ct_field).get_attname()
+        ct_id = getattrd(instance, ct_attname)
+        return self.get_content_type(id=ct_id).model_class()

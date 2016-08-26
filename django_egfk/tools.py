@@ -9,6 +9,7 @@ traversing
 """
 from __future__ import unicode_literals
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db.models import ForeignKey
 
 
@@ -58,14 +59,25 @@ def setattrd(obj, name, value):
         raise
 
 
-def get_field(model, field_name):
+class GenericForeignKeyDetected(AttributeError):
+    pass
+
+
+def get_field(model, field_name, ignore_GFK=False):
     """Get field with . notaion for traversing between objects."""
     def jump(a, b):
         if b[-1] != "*":
             f = a._meta.get_field(b)
             if isinstance(f, ForeignKey):
                 return f.related_model
+            elif isinstance(f, GenericForeignKey):
+                raise GenericForeignKeyDetected()
             return f
         else:
             return a._meta.get_field(b[:-1])
-    return reduce(jump, (field_name+"*").split("."), model)
+    try:
+        return reduce(jump, (field_name+"*").split("."), model)
+    except GenericForeignKeyDetected:
+        if ignore_GFK:
+            return None
+        raise
