@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey as GFK
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
 from django.db import models
 from django.core import checks
@@ -12,7 +12,7 @@ from .exceptions import PropertyIsImutable
 from .tools import getattrd, getattrd_last_but_one, get_field, get_field_model, setattrd
 
 
-class GenericForeignKey(GFK):
+class EnhancedGenericForeignKey(GenericForeignKey):
     """Enhanced GenericForeignKey.
 
     For more info take a look at
