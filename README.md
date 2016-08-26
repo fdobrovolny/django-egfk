@@ -8,11 +8,15 @@ Visit the home of `Django-egfk` on the web: [github.com/BrnoPCmaniak/django-egfk
 Documentation
 -------------
 
+Features:
+* content_type and object_id can be on different model which is connected via ForeignKey, OneToOneField or EnhancedGenericForeignKey
+* content_type can be a property. The property have to be ContentType instance.
+
 Example Usage:
 models.py
 ```python
 from django.db import models
-from django_egfk.fields import GenericForeignKey
+from django_egfk.fields import EnhancedGenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
 class Main(models.Model):
@@ -23,7 +27,7 @@ class Main(models.Model):
 class Child(models.Model):
     object_id = models.PositiveIntegerField()
     main = models.ForeignKey(Main, related_name="child")
-    content_object = GenericForeignKey('main.content_type', 'object_id')
+    content_object = EnhancedGenericForeignKey('main.content_type', 'object_id')
 ```
 
 And now you can do this:
@@ -47,4 +51,4 @@ And now you can do this:
 <User: alex>
 ```
 
-You can even have neasted GenericForeignKeys. More info in example/test_egfk/models.py @A,B,C,D
+You can even have neasted EnhancedGenericForeignKey. More info in example/test_egfk/models.py @A,B,C,D

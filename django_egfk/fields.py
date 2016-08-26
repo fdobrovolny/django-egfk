@@ -3,15 +3,16 @@ from __future__ import unicode_literals
 from collections import defaultdict
 
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey as GFK
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
 from django.db import models
 from django.core import checks
 
-from .tools import getattrd, getattrd_last_but_one, get_field, setattrd
+from .exceptions import PropertyIsImutable
+from .tools import getattrd, getattrd_last_but_one, get_field, get_field_model, setattrd
 
 
-class GenericForeignKey(GFK):
+class EnhancedGenericForeignKey(GenericForeignKey):
     """Enhanced GenericForeignKey.
 
     For more info take a look at
@@ -32,8 +33,7 @@ class GenericForeignKey(GFK):
     def __init__(self, ct_field='content_type', fk_field='object_id',
                  for_concrete_model=True, autosave_related=True):
         self.autosave_related = autosave_related
-        super(GenericForeignKey, self).__init__(ct_field, fk_field,
-                                                for_concrete_model)
+        super(EnhancedGenericForeignKey, self).__init__(ct_field, fk_field, for_concrete_model)
 
     def get_filter_kwargs_for_object(self, obj):
         """See corresponding method on Field"""
@@ -65,6 +65,12 @@ class GenericForeignKey(GFK):
         try:
             field = get_field(self.model, self.ct_field, ignore_GFK=True)
         except FieldDoesNotExist:
+            model = get_field_model(self.model, ".".join(self.ct_field.split(".")[:-1]),
+                                    ignore_GFK=True)
+            if model is None:
+                return []
+            elif isinstance(getattr(model,  self.ct_field.split(".")[-1]), property):
+                return []
             return [
                 checks.Error(
                     "The GenericForeignKey content type references the "
@@ -167,11 +173,18 @@ class GenericForeignKey(GFK):
         # reload the same ContentType over and over (#5570). Instead, get the
         # content type ID here, and later when the actual instance is needed,
         # use ContentType.objects.get_for_id(), which has a global cache.
-        ct_model = getattrd_last_but_one(instance, self.ct_field, instance).__class__
-        ct_attname = get_field(ct_model, self.ct_field.split(".")[-1]).get_attname()
-        full_ct_attname = ("%s.%s" % (".".join(self.ct_field.split(".")[:-1]), ct_attname)
-                           if len(self.ct_field.split(".")[:-1]) > 1 else ct_attname)
-        ct_id = getattrd(instance, full_ct_attname)
+        ct_model = getattrd_last_but_one(instance, self.ct_field, instance)
+        ct_model_class = ct_model.__class__
+        try:
+            ct_attname = get_field(ct_model_class, self.ct_field.split(".")[-1]).get_attname()
+            full_ct_attname = ("%s.%s" % (".".join(self.ct_field.split(".")[:-1]), ct_attname)
+                               if len(self.ct_field.split(".")[:-1]) > 1 else ct_attname)
+            ct_id = getattrd(instance, full_ct_attname)
+        except FieldDoesNotExist as ferror:
+            try:
+                ct_id = getattr(ct_model,  self.ct_field.split(".")[-1]).id
+            except AttributeError:
+                raise ferror
         pk_val = getattrd(instance, self.fk_field)
 
         try:
@@ -203,7 +216,13 @@ class GenericForeignKey(GFK):
             ct = self.get_content_type(obj=value)
             fk = value._get_pk_val()
 
-        setattrd(instance, self.ct_field, ct)
+        try:
+            setattrd(instance, self.ct_field, ct)
+        except AttributeError as e:
+            if e.message != "can't set attribute":
+                raise
+            elif getattrd(instance, self.ct_field).id != ct.id:
+                raise PropertyIsImutable()
         if "." in self.ct_field and self.autosave_related:
             getattrd_last_but_one(instance, self.ct_field).save()
         setattrd(instance, self.fk_field, fk)
