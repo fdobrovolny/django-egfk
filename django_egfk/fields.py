@@ -30,8 +30,7 @@ class EnhancedGenericForeignKey(GenericForeignKey):
     def __init__(self, ct_field='content_type', fk_field='object_id',
                  for_concrete_model=True, autosave_related=True):
         self.autosave_related = autosave_related
-        super(GenericForeignKey, self).__init__(ct_field, fk_field,
-                                                for_concrete_model)
+        super(EnhancedGenericForeignKey, self).__init__(ct_field, fk_field, for_concrete_model)
 
     def get_filter_kwargs_for_object(self, obj):
         """See corresponding method on Field"""
