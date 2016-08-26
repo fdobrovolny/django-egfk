@@ -46,3 +46,5 @@ And now you can do this:
 >>> c.content_object
 <User: alex>
 ```
+
+You can even have neasted GenericForeignKeys. More info in example/test_egfk/models.py @A,B,C,D
