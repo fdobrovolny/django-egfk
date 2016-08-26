@@ -175,7 +175,7 @@ class EnhancedGenericForeignKey(GenericForeignKey):
         try:
             ct_attname = get_field(ct_model_class, self.ct_field.split(".")[-1]).get_attname()
             full_ct_attname = ("%s.%s" % (".".join(self.ct_field.split(".")[:-1]), ct_attname)
-                               if len(self.ct_field.split(".")[:-1]) > 1 else ct_attname)
+                               if len(self.ct_field.split(".")) > 1 else ct_attname)
             ct_id = getattrd(instance, full_ct_attname)
         except FieldDoesNotExist as ferror:
             try:
