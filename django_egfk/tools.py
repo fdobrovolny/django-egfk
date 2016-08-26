@@ -12,6 +12,8 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db.models import ForeignKey
 
+from .exceptions import GenericForeignKeyDetected
+
 
 class NoDefaultProvided(object):
     """Exception for *attr functions."""
@@ -59,10 +61,6 @@ def setattrd(obj, name, value):
         raise
 
 
-class GenericForeignKeyDetected(AttributeError):
-    pass
-
-
 def get_field(model, field_name, ignore_GFK=False):
     """Get field with . notaion for traversing between objects."""
     def jump(a, b):
@@ -81,3 +79,15 @@ def get_field(model, field_name, ignore_GFK=False):
         if ignore_GFK:
             return None
         raise
+
+
+def get_field_model(model, field_name, ignore_GFK=False):
+    out = get_field(model, field_name, ignore_GFK=ignore_GFK)
+    if out is None:
+        return None
+    elif isinstance(out, ForeignKey):
+        return out.related_model
+    elif isinstance(out, GenericForeignKey):
+        raise GenericForeignKeyDetected()
+    else:
+        return out.model
