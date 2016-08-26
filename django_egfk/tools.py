@@ -12,6 +12,8 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db.models import ForeignKey
 
+from six.moves import reduce
+
 from .exceptions import GenericForeignKeyDetected
 
 
