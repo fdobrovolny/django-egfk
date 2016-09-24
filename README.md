@@ -20,7 +20,6 @@ from django_egfk.fields import EnhancedGenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
 class Main(models.Model):
-    text = models.TextField()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True)
 
 
@@ -32,23 +31,21 @@ class Child(models.Model):
 
 And now you can do this:
 ```python
->>> from test_egfk.models import Main, Child
->>> from django.contrib.auth.models import User
->>> m = Main(text="TEST")
->>> u = User.objects.get()
->>> u
-<User: alex>
+>>> from test_egfk.models import Main, Child, TestSampleModel
+>>> m = Main()
+>>> print(m.content_type)
+None
 >>> m.save()
->>> m.text
-'TEST'
->>> c = Child(main=m, content_object=u)
+>>> t = TestSampleModel(text="Test")
+>>> t.save()
+>>> t.text
+'Test'
+>>> c = Child(main=m, content_object=t)
 >>> c.save()
->>> Main.objects.get().text
-'TEST'
->>> Main.objects.get().content_type
-<ContentType: user>
+>>> Main.objects.last().content_type
+<ContentType: test sample model>
 >>> c.content_object
-<User: alex>
+<TestSampleModel: TestSampleModel object>
 ```
 
 You can even have neasted EnhancedGenericForeignKey. More info in example/test_egfk/models.py @A,B,C,D
