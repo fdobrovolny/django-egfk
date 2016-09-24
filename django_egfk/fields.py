@@ -2,14 +2,14 @@ from __future__ import unicode_literals
 
 from collections import defaultdict
 
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.core import checks
 from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist
 from django.db import models
-from django.core import checks
 
 from .exceptions import PropertyIsImutable
-from .tools import getattrd, getattrd_last_but_one, get_field, get_field_model, setattrd
+from .tools import get_field, get_field_model, getattrd, getattrd_last_but_one, setattrd
 
 
 class EnhancedGenericForeignKey(GenericForeignKey):
@@ -173,7 +173,12 @@ class EnhancedGenericForeignKey(GenericForeignKey):
         # reload the same ContentType over and over (#5570). Instead, get the
         # content type ID here, and later when the actual instance is needed,
         # use ContentType.objects.get_for_id(), which has a global cache.
-        ct_model = getattrd_last_but_one(instance, self.ct_field, instance)
+        try:
+            ct_model = getattrd_last_but_one(instance, self.ct_field)
+        except ObjectDoesNotExist:
+            # Return None if some of the FK on the way points nowhere
+            return None
+
         ct_model_class = ct_model.__class__
         try:
             ct_attname = get_field(ct_model_class, self.ct_field.split(".")[-1]).get_attname()
@@ -218,6 +223,9 @@ class EnhancedGenericForeignKey(GenericForeignKey):
 
         try:
             setattrd(instance, self.ct_field, ct)
+        except ObjectDoesNotExist:
+            # some of the FK on the way might point nowhere
+            raise
         except AttributeError as e:
             if e.message != "can't set attribute":
                 raise
