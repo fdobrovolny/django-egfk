@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
  - First release.
 
 ## 0.0.2 / 2016-8-27
-- Added support for neasted fields of GenericForeignKey.
+- Added support for nested fields of GenericForeignKey.
 
 ## 0.0.3 / 2016-8-27
 - Renamed GenericForeignKey -> EnhancedGenericForeignKey
@@ -20,5 +20,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added missing requirements
 
 ## 0.0.6 / 2016-9-24
-- Fixed bug with accesing/setting EnhancedGenericForeignKey with
+- Fixed bug with accessing/setting EnhancedGenericForeignKey with
   FK which is None in path
+
+## 0.0.7 / 2016-4-4
+  - Fix minor python 3 incompatibility
