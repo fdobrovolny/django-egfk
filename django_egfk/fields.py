@@ -227,10 +227,12 @@ class EnhancedGenericForeignKey(GenericForeignKey):
             # some of the FK on the way might point nowhere
             raise
         except AttributeError as e:
-            if e.message != "can't set attribute":
+            if str(e) != "can't set attribute":
                 raise
             elif getattrd(instance, self.ct_field).id != ct.id:
                 raise PropertyIsImutable()
+            else:
+                raise
         if "." in self.ct_field and self.autosave_related:
             getattrd_last_but_one(instance, self.ct_field).save()
         setattrd(instance, self.fk_field, fk)
