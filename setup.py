@@ -24,7 +24,7 @@ setup(
     description='Add django enhanced Generic Foreignkey.',
     # long_description=read('README.txt', 'CHANGES.txt'),
     keywords='django generic foreignkey',
-    url='https://github.com/BrnoPCmaniak/django-egfk',
+    url='https://github.com/monterail/django-egfk',
     author='Filip Dobrovolny',
     author_email='brnopcman@gmail.com',
     license='MIT',
@@ -43,6 +43,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'django==1.10',
+        'django',
     ],
 )
